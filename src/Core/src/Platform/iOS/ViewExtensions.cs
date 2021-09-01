@@ -9,7 +9,7 @@ namespace Microsoft.Maui
 {
 	public static partial class ViewExtensions
 	{
-		const string BackgroundLayerName = "MauiBackgroundLayer";
+		internal const string BackgroundLayerName = "MauiBackgroundLayer";
 
 		public static void UpdateIsEnabled(this UIView nativeView, IView view)
 		{
@@ -52,37 +52,44 @@ namespace Microsoft.Maui
 
 		public static void UpdateBackground(this UIView nativeView, IView view)
 		{
-			if (nativeView == null)
-				return;
-
-			// Remove previous background gradient layer if any
-			nativeView.RemoveBackgroundLayer();
-
-			var paint = view.Background;
-
-			if (paint.IsNullOrEmpty())
-				return;
-
-			if (paint is SolidPaint solidPaint)
+			if (view is ILayout layout)
 			{
-				Color backgroundColor = solidPaint.Color;
+				bool hasBorder = layout.Shape != null && layout.Stroke != null;
 
-				if (backgroundColor == null)
-					nativeView.BackgroundColor = ColorExtensions.BackgroundColor;
-				else
-					nativeView.BackgroundColor = backgroundColor.ToNative();
-
-				return;
+				if (hasBorder)
+					nativeView.UpdateMauiCALayer(layout);
 			}
-			else if (paint is GradientPaint gradientPaint)
+			else
 			{
-				var backgroundLayer = gradientPaint?.ToCALayer(nativeView.Bounds);
+				// Remove previous background gradient layer if any
+				nativeView.RemoveBackgroundLayer();
 
-				if (backgroundLayer != null)
+				var paint = view.Background;
+
+				if (paint.IsNullOrEmpty())
+					return;
+
+				if (paint is SolidPaint solidPaint)
 				{
-					backgroundLayer.Name = BackgroundLayerName;
-					nativeView.BackgroundColor = UIColor.Clear;
-					nativeView.InsertBackgroundLayer(backgroundLayer, 0);
+					Color backgroundColor = solidPaint.Color;
+
+					if (backgroundColor == null)
+						nativeView.BackgroundColor = ColorExtensions.BackgroundColor;
+					else
+						nativeView.BackgroundColor = backgroundColor.ToNative();
+
+					return;
+				}
+				else if (paint is GradientPaint gradientPaint)
+				{
+					var backgroundLayer = gradientPaint?.ToCALayer(nativeView.Bounds);
+
+					if (backgroundLayer != null)
+					{
+						backgroundLayer.Name = BackgroundLayerName;
+						nativeView.BackgroundColor = UIColor.Clear;
+						nativeView.InsertBackgroundLayer(backgroundLayer, 0);
+					}
 				}
 			}
 		}
