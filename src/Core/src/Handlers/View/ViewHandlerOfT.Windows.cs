@@ -57,7 +57,7 @@ namespace Microsoft.Maui.Handlers
 			var oldIndex = oldParent?.Children.IndexOf(NativeView);
 			oldParent?.Children.Remove(NativeView);
 
-			ContainerView ??= new Border();
+			ContainerView ??= new WrapperView();
 			ContainerView.Child = NativeView;
 
 			if (oldIndex is int idx && idx >= 0)
