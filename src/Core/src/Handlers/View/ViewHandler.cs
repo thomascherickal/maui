@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Maui.Graphics;
 #if __IOS__ || MACCATALYST
 using NativeView = UIKit.UIView;
@@ -42,11 +43,23 @@ namespace Microsoft.Maui.Handlers
 			[nameof(IViewHandler.ContainerView)] = MapContainerView,
 		};
 
-		public static CommandMapper<IView, ViewHandler> ViewCommandMapper = new()
+		public static CommandMapper<IView, IViewHandler> ViewCommandMapper = new()
 		{
 			[nameof(IView.InvalidateMeasure)] = MapInvalidateMeasure,
 			[nameof(IView.Frame)] = MapFrame,
+			[nameof(IViewHandler.ConnectHandler)] = MapConnectHandler,
+			[nameof(IViewHandler.DisconnectHandler)] = MapDisconnectHandler,
 		};
+
+		public static void MapDisconnectHandler(IViewHandler arg1, IView arg2, object? arg3)
+		{
+			arg1.DisconnectHandler();
+		}
+
+		public static void MapConnectHandler(IViewHandler arg1, IView arg2, object? arg3)
+		{
+			arg1.ConnectHandler(arg3 ?? throw new InvalidOperationException("arg3 needs to be a thing"));
+		}
 
 		bool _hasContainer;
 

@@ -1,31 +1,73 @@
-using System;
-using System.Threading.Tasks;
-using Android.Content;
 using Android.Content.Res;
-using Android.Graphics.Drawables;
 using Android.Views;
+using Android.Widget;
 using AndroidX.AppCompat.Widget;
-using AndroidX.Core.Widget;
 using Google.Android.Material.Button;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.Graphics;
-using static Microsoft.Maui.Handlers.ButtonHandler;
 using AView = Android.Views.View;
 
 namespace Microsoft.Maui.Handlers
 {
-	public sealed partial class ButtonHandler : ViewHandler<IButton, MaterialButton>
+	public partial interface IButtonHandler : IElementHandler
 	{
-		static Thickness? DefaultPadding;
-		static Drawable? DefaultBackground;
-		ImageSourcePartWrapper<ButtonHandler>? _imageSourcePartWrapper;
+		new AView? NativeView { get; }
 
-		ButtonClickListener ClickListener { get; } = new ButtonClickListener();
-		ButtonTouchListener TouchListener { get; } = new ButtonTouchListener();
+		// These are a little odd here but Android doesn't let you retrieve these from a control
+		ButtonHandler.ButtonClickListener ClickListener { get; }
+		ButtonHandler.ButtonTouchListener TouchListener { get; }
+	}
 
-		ImageSourcePartWrapper<ButtonHandler> ImageSourcePartWrapper =>
-			_imageSourcePartWrapper ??= new ImageSourcePartWrapper<ButtonHandler>(
-				this, (h) => h.VirtualView.ImageSource, null, null, OnSetImageSourceDrawable);
+	public sealed partial class ButtonMapper
+	{
+		// This is a Android-specific mapping
+		public static void MapBackground(IButtonHandler handler, IButton button)
+		{
+			handler.NativeView?.UpdateBackground(button);
+		}
+
+		public static void MapPadding(IButtonHandler handler, IButton button)
+		{
+			if (handler.NativeView is AppCompatButton compatButton)
+				compatButton.UpdatePadding(button);
+		}
+
+		public static void MapDisconnectHandler(IButtonHandler arg1, IButton arg2, object? arg3)
+		{
+			arg1.ClickListener.Handler = null;
+			arg1.NativeView?.SetOnClickListener(null);
+
+			arg1.TouchListener.Handler = null;
+			arg1.NativeView?.SetOnTouchListener(null);
+
+			// These should get wired up differently via append/prepend extensions
+			ViewHandler.MapDisconnectHandler((IViewHandler)arg1, arg2, arg3);
+		}
+
+		public static void MapConnectHandler(IButtonHandler arg1, IButton arg2, object? arg3)
+		{
+			arg1.ClickListener.Handler = arg1;
+			arg1.NativeView?.SetOnClickListener(arg1.ClickListener);
+
+			arg1.TouchListener.Handler = arg1;
+			arg1.NativeView?.SetOnTouchListener(arg1.TouchListener);
+
+
+			// These should get wired up differently via append/prepend extensions
+			ViewHandler.MapConnectHandler(arg1, arg2, arg3);
+		}
+	}
+
+	public sealed partial class ButtonHandler : ViewHandler<IButton, MaterialButton>, IButtonHandler
+	{
+		// Move these to Factory Methods?
+		ButtonClickListener IButtonHandler.ClickListener { get; } = new ButtonClickListener();
+		ButtonTouchListener IButtonHandler.TouchListener { get; } = new ButtonTouchListener();
+
+		//ImageSourcePartWrapper<ButtonHandler>? _imageSourcePartWrapper;
+
+		//ImageSourcePartWrapper<ButtonHandler> ImageSourcePartWrapper =>
+		//	_imageSourcePartWrapper ??= new ImageSourcePartWrapper<ButtonHandler>(
+		//		this, (h) => h.VirtualView.ImageSource, null, null, OnSetImageSourceDrawable);
 
 		static ColorStateList? _transparentColorStateList;
 
@@ -40,88 +82,6 @@ namespace Microsoft.Maui.Handlers
 			};
 
 			return nativeButton;
-		}
-
-		void SetupDefaults(MaterialButton nativeView)
-		{
-			DefaultPadding = new Thickness(
-				nativeView.PaddingLeft,
-				nativeView.PaddingTop,
-				nativeView.PaddingRight,
-				nativeView.PaddingBottom);
-
-			DefaultBackground = nativeView.Background;
-		}
-
-		protected override void ConnectHandler(MaterialButton nativeView)
-		{
-			ClickListener.Handler = this;
-			nativeView.SetOnClickListener(ClickListener);
-
-			TouchListener.Handler = this;
-			nativeView.SetOnTouchListener(TouchListener);
-
-			base.ConnectHandler(nativeView);
-		}
-
-		protected override void DisconnectHandler(MaterialButton nativeView)
-		{
-			ClickListener.Handler = null;
-			nativeView.SetOnClickListener(null);
-
-			TouchListener.Handler = null;
-			nativeView.SetOnTouchListener(null);
-
-			_sourceManager.Reset();
-
-			base.DisconnectHandler(nativeView);
-		}
-
-		// This is a Android-specific mapping
-		public static void MapBackground(ButtonHandler handler, IButton button)
-		{
-			handler.NativeView?.UpdateBackground(button, DefaultBackground);
-		}
-
-		public static void MapText(ButtonHandler handler, IButton button)
-		{
-			handler.NativeView?.UpdateText(button);
-		}
-
-		public static void MapTextColor(ButtonHandler handler, IButton button)
-		{
-			handler.NativeView?.UpdateTextColor(button);
-		}
-
-		public static void MapCharacterSpacing(ButtonHandler handler, IButton button)
-		{
-			handler.NativeView?.UpdateCharacterSpacing(button);
-		}
-
-		public static void MapFont(ButtonHandler handler, IButton button)
-		{
-			var fontManager = handler.GetRequiredService<IFontManager>();
-
-			handler.NativeView?.UpdateFont(button, fontManager);
-		}
-
-		public static void MapPadding(ButtonHandler handler, IButton button)
-		{
-			handler.NativeView?.UpdatePadding(button, DefaultPadding);
-		}
-
-		public static void MapImageSource(ButtonHandler handler, IButton image) =>
-			MapImageSourceAsync(handler, image).FireAndForget(handler);
-
-		public static Task MapImageSourceAsync(ButtonHandler handler, IButton image)
-		{
-			if (image.ImageSource == null)
-			{
-				handler.OnSetImageSourceDrawable(null);
-				return Task.CompletedTask;
-			}
-
-			return handler.ImageSourcePartWrapper.UpdateImageSource();
 		}
 
 		bool NeedsExactMeasure()
@@ -145,6 +105,7 @@ namespace Microsoft.Maui.Handlers
 			return true;
 		}
 
+		//TODO MOVE TO COMMAND MAPPER
 		public override void NativeArrange(Rectangle frame)
 		{
 			var nativeView = this.GetWrappedNativeView();
@@ -176,49 +137,45 @@ namespace Microsoft.Maui.Handlers
 			return MeasureSpecMode.Exactly.MakeMeasureSpec(deviceSize);
 		}
 
+		//void OnSetImageSourceDrawable(Drawable? obj)
+		//{
+		//	NativeView.Icon = obj;
+		//	VirtualView?.ImageSourceLoaded();
+		//}
 
-		void OnSetImageSourceDrawable(Drawable? obj)
-		{
-			NativeView.Icon = obj;
-			VirtualView?.ImageSourceLoaded();
-		}
+		TextView? ITextHandler.NativeView => this.NativeView;
 
-		bool OnTouch(IButton? button, AView? v, MotionEvent? e)
+		AView? IButtonHandler.NativeView => this.NativeView;
+
+		public class ButtonClickListener : Java.Lang.Object, AView.IOnClickListener
 		{
-			switch (e?.ActionMasked)
+			public IButtonHandler? Handler { get; set; }
+
+			public virtual void OnClick(AView? v)
 			{
-				case MotionEventActions.Down:
-					button?.Pressed();
-					break;
-				case MotionEventActions.Up:
-					button?.Released();
-					break;
-			}
-
-			return false;
-		}
-
-		void OnClick(IButton? button, AView? v)
-		{
-			button?.Clicked();
-		}
-
-		class ButtonClickListener : Java.Lang.Object, AView.IOnClickListener
-		{
-			public ButtonHandler? Handler { get; set; }
-
-			public void OnClick(AView? v)
-			{
-				Handler?.OnClick(Handler?.VirtualView, v);
+				Handler?.VirtualView?.Clicked();
 			}
 		}
 
-		class ButtonTouchListener : Java.Lang.Object, AView.IOnTouchListener
+		public class ButtonTouchListener : Java.Lang.Object, AView.IOnTouchListener
 		{
-			public ButtonHandler? Handler { get; set; }
+			public IButtonHandler? Handler { get; set; }
 
-			public bool OnTouch(AView? v, global::Android.Views.MotionEvent? e) =>
-				Handler?.OnTouch(Handler?.VirtualView, v, e) ?? false;
+			public virtual bool OnTouch(AView? v, global::Android.Views.MotionEvent? e)
+			{
+				var button = Handler?.VirtualView;
+				switch (e?.ActionMasked)
+				{
+					case MotionEventActions.Down:
+						button?.Pressed();
+						break;
+					case MotionEventActions.Up:
+						button?.Released();
+						break;
+				}
+
+				return false;
+			}
 		}
 	}
 }

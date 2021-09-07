@@ -12,6 +12,8 @@
 
 		void DisconnectHandler();
 
+		void ConnectHandler(object nativeView);
+
 		object? NativeView { get; }
 
 		IElement? VirtualView { get; }

@@ -1,27 +1,42 @@
-#nullable enable
+
+using System;
+
 namespace Microsoft.Maui.Handlers
 {
-	public sealed partial class ButtonHandler
+	public partial interface IButtonHandler : IViewHandler
 	{
-		readonly ImageSourceServiceResultManager _sourceManager = new ImageSourceServiceResultManager();
+		public new IButton VirtualView { get; }
+	}	
 
-		public static IPropertyMapper<IButton, ButtonHandler> ButtonMapper = new PropertyMapper<IButton, ButtonHandler>(ViewHandler.ViewMapper)
+	public sealed partial class ButtonMapper
+	{
+		public static IPropertyMapper<IButton, IButtonHandler> Mapper =
+			new PropertyMapper<IButton, IButtonHandler>(ViewHandler.ViewMapper, TextMapper.Mapper)
+			{
+#if __ANDROID__
+				[nameof(IButton.Background)] = MapBackground,
+				[nameof(IButton.Padding)] = MapPadding
+#endif
+			};
+
+		public static CommandMapper<IButton, IButtonHandler> CommandMapper = new(ViewHandler.ViewCommandMapper)
 		{
-			[nameof(IButton.Background)] = MapBackground,
-			[nameof(IButton.CharacterSpacing)] = MapCharacterSpacing,
-			[nameof(IButton.Font)] = MapFont,
-			[nameof(IButton.Padding)] = MapPadding,
-			[nameof(IButton.Text)] = MapText,
-			[nameof(IButton.TextColor)] = MapTextColor,
-			[nameof(IButton.ImageSource)] = MapImageSource
+#if __ANDROID__
+			[nameof(IViewHandler.ConnectHandler)] = MapConnectHandler,
+			[nameof(IViewHandler.DisconnectHandler)] = MapDisconnectHandler
+#endif
 		};
+	}
 
-		public ButtonHandler() : base(ButtonMapper)
+	public sealed partial class ButtonHandler : IButtonHandler, ITextHandler
+	{
+
+		public ButtonHandler() : base(ButtonMapper.Mapper)
 		{
 
 		}
 
-		public ButtonHandler(IPropertyMapper? mapper = null) : base(mapper ?? ButtonMapper)
+		public ButtonHandler(IPropertyMapper? mapper = null) : base(mapper ?? ButtonMapper.Mapper)
 		{
 		}
 	}

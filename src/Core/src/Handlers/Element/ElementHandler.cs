@@ -121,5 +121,10 @@ namespace Microsoft.Maui.Handlers
 				DisconnectHandler(oldNativeView);
 			}
 		}
+
+		void IElementHandler.ConnectHandler(object nativeView)
+		{
+			ConnectHandler(nativeView);
+		}
 	}
 }
