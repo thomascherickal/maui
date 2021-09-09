@@ -47,6 +47,7 @@ namespace Microsoft.Maui.Controls.Hosting
 #endif
 #if __ANDROID__ 
 			{ typeof(NavigationPage), typeof(Controls.Handlers.NavigationPageHandler) },
+			{ typeof(TabbedPage), typeof(Controls.Handlers.TabbedPageHandler) },
 #endif
 		};
 
